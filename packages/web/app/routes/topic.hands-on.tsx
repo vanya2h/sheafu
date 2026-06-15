@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Pending } from "@vanya2h/utils-rxjs-react";
 import { useState } from "react";
 import { useLoaderData, useNavigate, useParams } from "react-router";
+import { Pending } from "rxfy-react";
 import type { Route } from "./+types/topic.hands-on";
 
 import { Card } from "~/components/Card";

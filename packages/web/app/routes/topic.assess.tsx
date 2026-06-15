@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Pending } from "@vanya2h/utils-rxjs-react";
 import { useMemo, useState } from "react";
 import { useLoaderData, useNavigate, useParams, useRouteLoaderData } from "react-router";
+import { Pending } from "rxfy-react";
 import { shareReplay, tap } from "rxjs";
 import type { Route } from "./+types/topic.assess";
 import type { loader as layoutLoader } from "./topic-layout";
