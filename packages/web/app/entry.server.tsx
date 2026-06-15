@@ -1,6 +1,5 @@
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import type { EntryContext } from "react-router";
 import { ServerRouter } from "react-router";
@@ -15,9 +14,7 @@ export default function handleRequest(
   responseHeaders: Headers,
   routerContext: EntryContext,
 ) {
-  return isbot(request.headers.get("user-agent") ?? "")
-    ? handleBuffered(request, responseStatusCode, responseHeaders, routerContext)
-    : handleBuffered(request, responseStatusCode, responseHeaders, routerContext);
+  return handleBuffered(request, responseStatusCode, responseHeaders, routerContext);
 }
 
 function handleBuffered(
@@ -35,6 +32,7 @@ function handleBuffered(
       </StoreProvider>,
       {
         onAllReady() {
+          clearTimeout(timeoutId);
           const snapshot = dehydrate(registry);
           const chunks: Buffer[] = [];
           const intermediate = new PassThrough();
@@ -43,20 +41,21 @@ function handleBuffered(
           intermediate.on("end", () => {
             const body = new PassThrough();
             responseHeaders.set("Content-Type", "text/html");
+            for (const chunk of chunks) body.write(chunk);
+            body.write(hydrationScript(snapshot));
+            body.end();
             resolve(
               new Response(createReadableStreamFromReadable(body), {
                 headers: responseHeaders,
                 status: responseStatusCode,
               }),
             );
-            for (const chunk of chunks) body.write(chunk);
-            body.write(hydrationScript(snapshot));
-            body.end();
           });
 
           pipe(intermediate);
         },
         onShellError(error: unknown) {
+          clearTimeout(timeoutId);
           reject(error);
         },
         onError(error: unknown) {
@@ -66,6 +65,6 @@ function handleBuffered(
       },
     );
 
-    setTimeout(abort, ABORT_DELAY);
+    const timeoutId = setTimeout(abort, ABORT_DELAY);
   });
 }
