@@ -436,6 +436,13 @@ export const curriculumRoute = new Hono<AuthEnv>()
     await db.customCurriculum.deleteMany({ where: { id, userId, status: "draft" } });
     return c.json({ ok: true });
   })
+  .get("/curriculums/published", async (c) => {
+    const userId = c.var.user.id;
+    const records = await db.customCurriculum.findMany({
+      where: { userId, status: "published" },
+    });
+    return c.json({ curricula: records.map((r) => ({ ...r })) });
+  })
   .post("/curriculums/drafts/:id/extract", async (c) => {
     const userId = c.get("user").id;
     const id = c.req.param("id");

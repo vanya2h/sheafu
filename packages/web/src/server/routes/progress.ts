@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { format } from "date-fns";
 import { Hono } from "hono";
 import { z } from "zod";
+import { highestPhase, parseTopicSessionState } from "../../lib/phase";
 import { db } from "../db";
 import type { AuthEnv } from "../middleware/requireAuth";
 
@@ -14,18 +15,33 @@ export const progressRoute = new Hono<AuthEnv>()
   .get("/progress", async (c) => {
     const userId = c.var.user.id;
 
-    const [completions, activities, startedAt] = await Promise.all([
+    const [completions, activities, topicSessions] = await Promise.all([
       db.taskCompletion.findMany({ where: { userId } }),
       db.dailyActivity.findMany({ where: { userId } }),
-      db.appSetting.findUnique({ where: { key_userId: { key: "startedAt", userId } } }),
+      db.topicSession.findMany({ where: { userId } }),
     ]);
 
+    const activeSessions = topicSessions.flatMap((s) => {
+      const state = parseTopicSessionState(s.phaseData);
+      const top = highestPhase(state);
+      if (!top) return [];
+      const phase = state.phases[top];
+      if (!phase) return [];
+      const partIdx = "partIdx" in phase ? phase.partIdx : undefined;
+      return [{ taskId: s.taskId, name: top, partIdx }];
+    });
+
     return c.json({
-      completedTaskIds: Object.fromEntries(completions.map((t) => [t.taskId, t.completedAt.toISOString()])),
-      activity: Object.fromEntries(
-        activities.map((a) => [a.date, { date: a.date, taskIds: a.taskIds, minutes: a.minutes }]),
-      ),
-      startedAt: startedAt?.value ?? new Date().toISOString(),
+      completions: completions.map((t) => ({
+        taskId: t.taskId,
+        completedAt: t.completedAt.toISOString(),
+      })),
+      activity: activities.map((a) => ({
+        date: a.date,
+        taskIds: a.taskIds as string[],
+        minutes: a.minutes,
+      })),
+      activeSessions,
     });
   })
 
