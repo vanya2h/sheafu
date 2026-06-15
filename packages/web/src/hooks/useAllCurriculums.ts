@@ -1,14 +1,23 @@
 import { useMemo } from "react";
-import { useRootData } from "../../app/hooks/useRootData";
+import { useModelStore } from "rxfy-react";
+import { useLocale } from "../../app/hooks/useLocale";
 import { listCurriculums } from "../data/curriculum";
 import type { CurriculumDef } from "../data/types";
-import { DEFAULT_LOCALE } from "../lib/i18n";
+import { parseCurriculumDef } from "../data/types";
+import { CustomCurriculumModel } from "../lib/models/curriculum";
 
 export function useAllCurriculums(): CurriculumDef[] {
-  const data = useRootData();
-  const locale = data?.locale ?? DEFAULT_LOCALE;
-  return useMemo(
-    () => [...listCurriculums(locale), ...(data?.customCurriculums ?? [])],
-    [locale, data?.customCurriculums],
-  );
+  const locale = useLocale();
+  const store = useModelStore(CustomCurriculumModel);
+
+  return useMemo(() => {
+    const custom: CurriculumDef[] = [];
+    for (const [, entity] of store.valueEntries()) {
+      const parsed = parseCurriculumDef(entity);
+      if (parsed !== null) {
+        custom.push(parsed);
+      }
+    }
+    return [...listCurriculums(locale), ...custom];
+  }, [locale, store]);
 }
