@@ -1,21 +1,11 @@
 import { Trans } from "@lingui/react/macro";
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react";
 import isEqual from "lodash/isEqual";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useLoaderData, useNavigate, useParams, useRouteLoaderData } from "react-router";
+import { createAtom } from "rxfy";
 import { Pending } from "rxfy-react";
-import {
-  combineLatest,
-  distinctUntilChanged,
-  filter,
-  map,
-  scan,
-  shareReplay,
-  skip,
-  startWith,
-  Subject,
-  tap,
-} from "rxjs";
+import { combineLatest, distinctUntilChanged, filter, map, skip, tap } from "rxjs";
 import type { Route } from "./+types/topic.study";
 import type { loader as layoutLoader } from "./topic-layout";
 
@@ -154,8 +144,8 @@ function StudyView({
   const navigate = useNavigate();
   const { saveSession: rawSaveSession } = useTopicSession(taskId);
 
-  const [updates$] = useState(() => new Subject<MaterialUpdate>());
-  const [navigateIdx$] = useState(() => new Subject<number>());
+  const material$ = useMemo(() => createAtom<Material | null>(initialMaterial), [initialMaterial]);
+  const partIdx$ = useMemo(() => createAtom<number>(initialPartIdx), [initialPartIdx]);
 
   const saveSession = useCallback<typeof rawSaveSession>(
     (phase) =>
@@ -163,32 +153,8 @@ function StudyView({
     [readOnly, rawSaveSession],
   );
 
-  const material$ = useMemo(
-    () =>
-      updates$.pipe(
-        scan(reduceMaterial, initialMaterial),
-        startWith(initialMaterial),
-        shareReplay({ bufferSize: 1, refCount: false }),
-      ),
-    [updates$, initialMaterial],
-  );
-
-  const partIdx$ = useMemo(
-    () =>
-      navigateIdx$.pipe(
-        startWith(initialPartIdx),
-        distinctUntilChanged(),
-        shareReplay({ bufferSize: 1, refCount: false }),
-      ),
-    [navigateIdx$, initialPartIdx],
-  );
-
   const viewState$ = useMemo(
-    () =>
-      combineLatest([material$, partIdx$]).pipe(
-        map(([material, partIdx]) => ({ material, partIdx })),
-        shareReplay({ bufferSize: 1, refCount: false }),
-      ),
+    () => combineLatest([material$, partIdx$]).pipe(map(([material, partIdx]) => ({ material, partIdx }))),
     [material$, partIdx$],
   );
 
@@ -213,16 +179,14 @@ function StudyView({
       state$: stream.state$.pipe(
         tap((state) => {
           if (state.status !== "complete") return;
-          updates$.next({
-            kind: "plan",
-            plan: parsePlan(state.text),
-            assessmentContext,
-          });
-          navigateIdx$.next(0);
+          material$.modify((prev) =>
+            reduceMaterial(prev, { kind: "plan", plan: parsePlan(state.text), assessmentContext }),
+          );
+          partIdx$.set(0);
         }),
       ),
     };
-  }, [task, taskId, curriculumName, complexity, assessmentContext, locale, initialMaterial, updates$, navigateIdx$]);
+  }, [task, taskId, curriculumName, complexity, assessmentContext, locale, initialMaterial, material$, partIdx$]);
 
   const partStream$ = useMemo(
     () =>
@@ -251,18 +215,13 @@ function StudyView({
             state$: stream.state$.pipe(
               tap((state) => {
                 if (state.status !== "complete") return;
-                updates$.next({
-                  kind: "part",
-                  idx,
-                  part: parsePart(state.text),
-                });
+                material$.modify((prev) => reduceMaterial(prev, { kind: "part", idx, part: parsePart(state.text) }));
               }),
             ),
           };
         }),
-        shareReplay({ bufferSize: 1, refCount: false }),
       ),
-    [material$, partIdx$, task, taskId, locale, curriculumName, complexity, updates$],
+    [material$, partIdx$, task, taskId, locale, curriculumName, complexity],
   );
 
   useEffect(() => {
@@ -388,7 +347,7 @@ function StudyView({
               <Button
                 variant="outline"
                 disabled={!prevPlan || !material.parts[partIdx - 1]}
-                onClick={() => navigateIdx$.next(partIdx - 1)}
+                onClick={() => partIdx$.set(partIdx - 1)}
               >
                 <ArrowLeftIcon /> <Trans>Previous</Trans>
               </Button>
@@ -398,7 +357,7 @@ function StudyView({
                   <Trans>Practice</Trans> <ArrowRightIcon />
                 </Button>
               ) : (
-                <Button className="ml-auto" disabled={!part} onClick={() => navigateIdx$.next(partIdx + 1)}>
+                <Button className="ml-auto" disabled={!part} onClick={() => partIdx$.set(partIdx + 1)}>
                   <Trans>Next</Trans> <ArrowRightIcon />
                 </Button>
               )}
