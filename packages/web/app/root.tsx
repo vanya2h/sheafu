@@ -1,14 +1,20 @@
 import { I18nProvider } from "@lingui/react";
 import { useEffect } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from "react-router";
+import { useStateData } from "rxfy-react";
 import type { Route } from "./+types/root";
 import "~/index.css";
 
 import { RateLimitModal } from "~/components/RateLimitModal";
 import type { Complexity } from "~/data/types";
 import { parseCurriculumDef } from "~/data/types";
+import { apiClient } from "~/lib/apiClient";
+import { ProgressMutationsContext } from "~/lib/context/progressMutations";
 import { activateLocale, getLocaleFromRequest, i18n } from "~/lib/i18n";
 import { highestPhase, parseTopicSessionState } from "~/lib/phase";
+import { curriculaState } from "~/lib/state/curricula";
+import type { ProgressMutations } from "~/lib/state/progress";
+import { progressState } from "~/lib/state/progress";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 
@@ -105,7 +111,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { locale } = useLoaderData<typeof loader>();
+  const { locale, progress, customCurriculums } = useLoaderData<typeof loader>();
 
   if (i18n.locale !== locale) {
     activateLocale(locale);
@@ -115,10 +121,40 @@ export default function App() {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  const progressDefaultValue = progress
+    ? {
+        completions: Object.entries(progress.completedTaskIds).map(([taskId, completedAt]) => ({
+          taskId,
+          completedAt,
+        })),
+        activity: Object.values(progress.activity),
+        activeSessions: Object.entries(progress.activeSessions).map(([taskId, s]) => ({
+          taskId,
+          ...s,
+        })),
+      }
+    : null;
+
+  const { mutations } = useStateData(
+    progressState,
+    () => apiClient.api.progress.$get().then((r) => r.json()),
+    {},
+    progressDefaultValue ? { defaultData: progressDefaultValue } : undefined,
+  );
+
+  useStateData(
+    curriculaState,
+    () => apiClient.api.curriculums.published.$get().then((r) => r.json()),
+    {},
+    { defaultData: { curricula: customCurriculums ?? [] } },
+  );
+
   return (
-    <I18nProvider i18n={i18n}>
-      <Outlet />
-      <RateLimitModal />
-    </I18nProvider>
+    <ProgressMutationsContext value={mutations as unknown as ProgressMutations}>
+      <I18nProvider i18n={i18n}>
+        <Outlet />
+        <RateLimitModal />
+      </I18nProvider>
+    </ProgressMutationsContext>
   );
 }
