@@ -1,9 +1,9 @@
 import { Trans } from "@lingui/react/macro";
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react";
-import { Pending } from "@vanya2h/utils-rxjs-react";
 import isEqual from "lodash/isEqual";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData, useNavigate, useParams, useRouteLoaderData } from "react-router";
+import { Pending } from "rxfy-react";
 import {
   combineLatest,
   distinctUntilChanged,

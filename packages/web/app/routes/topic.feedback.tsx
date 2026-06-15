@@ -1,8 +1,8 @@
 import { Trans } from "@lingui/react/macro";
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { Pending } from "@vanya2h/utils-rxjs-react";
 import { useMemo, useState } from "react";
 import { useLoaderData, useNavigate, useParams } from "react-router";
+import { Pending } from "rxfy-react";
 import { shareReplay, tap } from "rxjs";
 import type { Route } from "./+types/topic.feedback";
 

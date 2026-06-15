@@ -1,9 +1,9 @@
 import { Trans } from "@lingui/react/macro";
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { Pending } from "@vanya2h/utils-rxjs-react";
 import { parseResponse } from "hono/client";
 import { useMemo, useState } from "react";
 import { redirect, useLoaderData, useNavigate, useParams, useRevalidator, useRouteLoaderData } from "react-router";
+import { Pending } from "rxfy-react";
 import { map, shareReplay, startWith, tap } from "rxjs";
 import type { Route } from "./+types/curriculum.draft.outline";
 import type { DraftLoaderData } from "./curriculum.draft";
