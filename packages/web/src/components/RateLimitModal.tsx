@@ -1,21 +1,13 @@
 import { Trans } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
-import { rateLimitBus, type RateLimitEvent } from "../lib/rateLimitBus";
+import { useAtom } from "rxfy-react";
+import { rateLimitEvent$ } from "../lib/atoms";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export function RateLimitModal() {
-  const [event, setEvent] = useState<RateLimitEvent | null>(null);
+  const [event, setEvent] = useAtom(rateLimitEvent$);
   const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    function handler(e: RateLimitEvent) {
-      setEvent(e);
-      setNow(new Date());
-    }
-    rateLimitBus.on("rateLimit", handler);
-    return () => rateLimitBus.off("rateLimit", handler);
-  }, []);
 
   useEffect(() => {
     if (!event) return;
