@@ -11,7 +11,7 @@ function today() {
 }
 
 export const progressRoute = new Hono<AuthEnv>()
-  // ─── GET /progress ───────────────────────────────────────────────────────────
+  // Returns arrays for rxfy store seeding. startedAt is excluded — served from root loader as read-only data.
   .get("/progress", async (c) => {
     const userId = c.var.user.id;
 
