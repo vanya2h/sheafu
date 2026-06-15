@@ -1,7 +1,7 @@
 import { Trans } from "@lingui/react/macro";
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react";
 import isEqual from "lodash/isEqual";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData, useNavigate, useParams, useRouteLoaderData } from "react-router";
 import { createAtom } from "rxfy";
 import { Pending } from "rxfy-react";
@@ -144,8 +144,8 @@ function StudyView({
   const navigate = useNavigate();
   const { saveSession: rawSaveSession } = useTopicSession(taskId);
 
-  const material$ = useMemo(() => createAtom<Material | null>(initialMaterial), [initialMaterial]);
-  const partIdx$ = useMemo(() => createAtom<number>(initialPartIdx), [initialPartIdx]);
+  const [material$] = useState(() => createAtom<Material | null>(initialMaterial));
+  const [partIdx$] = useState(() => createAtom<number>(initialPartIdx));
 
   const saveSession = useCallback<typeof rawSaveSession>(
     (phase) =>
