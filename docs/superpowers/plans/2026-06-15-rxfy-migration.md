@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Migrate the dashboard web package to rxfy + rxfy-react 1.0.5 as the primary state framework, eliminating `revalidate()` and raw RxJS boilerplate.
+**Goal:** Migrate the dashboard web package to rxfy + rxfy-react 1.1.0 as the primary state framework, eliminating `revalidate()` and raw RxJS boilerplate.
 
 **Architecture:** React Router loaders continue fetching from DB and returning JSON. Components pass that data as the `defaultValue` (4th arg) to `useStateData`, seeding rxfy stores on first render. All subsequent mutations go through rxfy — no `revalidate()` anywhere. SSR dehydration/hydration via `entry.server.tsx` + `entry.client.tsx`.
 
-**Tech Stack:** rxfy 1.0.5, rxfy-react 1.0.5, React Router v7 (SSR), Hono, Prisma, Vitest
+**Tech Stack:** rxfy 1.1.0, rxfy-react 1.1.0, React Router v7 (SSR), Hono, Prisma, Vitest
 
 ---
 
@@ -60,7 +60,7 @@
 
 ```bash
 cd packages/web
-pnpm add rxfy@1.0.5 rxfy-react@1.0.5
+pnpm add rxfy@1.1.0 rxfy-react@1.1.0
 pnpm remove @vanya2h/utils-rxjs-react jotai mitt
 ```
 
@@ -87,7 +87,7 @@ Expected: no errors (rxfy-react exports the same `Pending` component API).
 
 ```bash
 git add packages/web/package.json packages/web/app/routes/topic.study.tsx packages/web/app/routes/topic.assess.tsx packages/web/app/routes/topic.gaps.tsx packages/web/app/routes/topic.feedback.tsx packages/web/app/routes/topic.hands-on.tsx packages/web/app/routes/topic.write-up.tsx packages/web/app/routes/curriculum.draft.outline.tsx packages/web/app/routes/curriculum.draft.phases.tsx
-git commit -m "chore: install rxfy 1.0.5, swap Pending import source"
+git commit -m "chore: install rxfy 1.1.0, swap Pending import source"
 ```
 
 ---
@@ -732,7 +732,7 @@ export function useProgress() {
 }
 ```
 
-> **Note on `getAll()`:** `ModelStore` exposes `getAll()` to iterate over current store contents synchronously. If the rxfy 1.0.5 API uses a different method name (e.g., `values()` or iteration via `added$`), check the rxfy-react type definitions and adjust accordingly.
+> **Note on `getAll()`:** `ModelStore` exposes `getAll()` to iterate over current store contents synchronously. If the rxfy 1.1.0 API uses a different method name (e.g., `values()` or iteration via `added$`), check the rxfy-react type definitions and adjust accordingly.
 
 - [ ] **Step 2: Rewrite `src/hooks/useTopicSession.ts`**
 
@@ -1043,7 +1043,7 @@ export function getLlmStream(key: string, fetcher: LlmFetcher): LlmStream {
 pnpm --filter web run typecheck
 ```
 
-Expected: no errors. If `IAtom` is not exported from `rxfy`, check the correct type name in the rxfy 1.0.5 type definitions (`IAtom`, `Atom`, or the return type of `createAtom`).
+Expected: no errors. If `IAtom` is not exported from `rxfy`, check the correct type name in the rxfy 1.1.0 type definitions (`IAtom`, `Atom`, or the return type of `createAtom`).
 
 - [ ] **Step 3: Verify tests still pass**
 
