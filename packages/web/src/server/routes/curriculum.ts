@@ -437,11 +437,20 @@ export const curriculumRoute = new Hono<AuthEnv>()
     return c.json({ ok: true });
   })
   .get("/curriculums/published", async (c) => {
-    const userId = c.var.user.id;
+    const userId = c.get("user").id;
     const records = await db.customCurriculum.findMany({
       where: { userId, status: "published" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        complexity: true,
+        cover: true,
+        outline: true,
+        status: true,
+      },
     });
-    return c.json({ curricula: records.map((r) => ({ ...r })) });
+    return c.json({ curricula: records });
   })
   .post("/curriculums/drafts/:id/extract", async (c) => {
     const userId = c.get("user").id;
