@@ -14,9 +14,9 @@ import { TopicActionBar } from "~/components/TopicActionBar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
-import { useProgress } from "~/hooks/useProgress";
+import { useToggleTask } from "~/hooks/useToggleTask";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { createLlmStream, type LlmStream } from "~/lib/llmStream";
 import type { Material } from "~/lib/phase";
 import { parseTopicSessionState } from "~/lib/phase";
@@ -70,7 +70,7 @@ function WriteUpCompleteView({
   const { curriculumId, taskId } = useParams<{ curriculumId: string; taskId: string }>();
   const navigate = useNavigate();
   const { deleteSession } = useTopicSession(taskId!);
-  const { toggleTask } = useProgress();
+  const toggleTask = useToggleTask();
 
   const part = material.parts[partIdx]!;
 
@@ -111,9 +111,10 @@ function WriteUpReflectionView({ material, partIdx }: { material: Material; part
   const { curriculumId, taskId } = useParams<{ curriculumId: string; taskId: string }>();
   const navigate = useNavigate();
   const { saveSession, deleteSession } = useTopicSession(taskId!);
-  const { toggleTask } = useProgress();
+  const toggleTask = useToggleTask();
   const { t } = useLingui();
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const part = material.parts[partIdx]!;
 

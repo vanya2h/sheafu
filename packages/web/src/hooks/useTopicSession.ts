@@ -1,12 +1,13 @@
 import { parseResponse } from "hono/client";
 import { useMemo } from "react";
-import { apiClient } from "../lib/apiClient";
-import { useProgressMutations } from "../lib/context/progressMutations";
-import type { PersistedPhase } from "../lib/phase";
-import { highestPhase } from "../lib/phase";
+import { useProgressData } from "./useProgressData";
+
+import { useApiClient } from "~/lib/apiClient";
+import type { PersistedPhase } from "~/lib/phase";
 
 export function useTopicSession(taskId: string) {
-  const mutations = useProgressMutations();
+  const { mutations } = useProgressData();
+  const apiClient = useApiClient();
 
   return useMemo(
     () => ({
@@ -17,12 +18,8 @@ export function useTopicSession(taskId: string) {
             json: { phase },
           }),
         );
-        const syntheticState = { phases: { [phase.name]: phase } } as Parameters<typeof highestPhase>[0];
-        const top = highestPhase(syntheticState);
-        if (top) {
-          const partIdx = "partIdx" in phase ? phase.partIdx : undefined;
-          mutations.setActiveSession({ taskId, name: top, partIdx });
-        }
+        const partIdx = "partIdx" in phase ? phase.partIdx : undefined;
+        mutations.setActiveSession({ taskId, name: phase.name, partIdx });
         return result;
       },
       deleteSession: async () => {
@@ -31,6 +28,6 @@ export function useTopicSession(taskId: string) {
         return result;
       },
     }),
-    [taskId, mutations],
+    [apiClient, taskId, mutations],
   );
 }

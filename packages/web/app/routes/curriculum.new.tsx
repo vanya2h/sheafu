@@ -13,7 +13,7 @@ import { PageContent } from "~/components/layout/PageContent";
 import { ProgramCover } from "~/components/ProgramCover";
 import { BreadcrumbItem, BreadcrumbPage } from "~/components/ui/breadcrumb";
 import { Button } from "~/components/ui/button";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import type { BreadcrumbHandle } from "~/lib/breadcrumbs";
 import { getApiErrorMessage } from "~/lib/errors";
 import { generateGradient, type GradientCover, GradientCoverSchema } from "~/lib/gradient";
@@ -84,6 +84,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function NewCurriculumPage() {
   const { drafts } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const apiClient = useApiClient();
   const { t } = useLingui();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);

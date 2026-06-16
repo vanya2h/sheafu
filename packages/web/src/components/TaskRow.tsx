@@ -1,10 +1,13 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { parseResponse } from "hono/client";
+import { useMemo } from "react";
 import { useNavigate } from "react-router";
+import { Pending, useModelStore } from "rxfy-react";
 import type { Task } from "../data/types";
-import type { ActiveSession } from "../hooks/useProgress";
-import { useProgress } from "../hooks/useProgress";
-import { apiClient } from "../lib/apiClient";
+import { useProgressData } from "../hooks/useProgressData";
+import { useApiClient } from "../lib/apiClient";
+import type { ActiveSession } from "../lib/models/progress";
+import { ActiveSessionModel } from "../lib/models/progress";
 import { getTopicLinks } from "../lib/routes";
 
 import { Button } from "~/components/ui/button";
@@ -40,10 +43,45 @@ function ActiveSessionLabel({ session }: { session: ActiveSession }) {
 }
 
 export function TaskRow({ task, curriculumId }: { task: Task; curriculumId: string }) {
-  const { completedTaskIds, activeSessions } = useProgress();
+  const { data$ } = useProgressData();
+
+  return (
+    <Pending value$={data$}>
+      {({ completions, activeSessions }) => {
+        const checked = completions.includes(task.id);
+        const hasSession = activeSessions.includes(task.id);
+        if (hasSession) {
+          return <TaskRowWithSession task={task} curriculumId={curriculumId} checked={checked} />;
+        }
+        return <TaskRowBody task={task} curriculumId={curriculumId} checked={checked} session={undefined} />;
+      }}
+    </Pending>
+  );
+}
+
+function TaskRowWithSession({ task, curriculumId, checked }: { task: Task; curriculumId: string; checked: boolean }) {
+  const sessionStore = useModelStore(ActiveSessionModel);
+  const session$ = useMemo(() => sessionStore.get(task.id), [sessionStore, task.id]);
+  return (
+    <Pending value$={session$}>
+      {(session) => <TaskRowBody task={task} curriculumId={curriculumId} checked={checked} session={session} />}
+    </Pending>
+  );
+}
+
+function TaskRowBody({
+  task,
+  curriculumId,
+  checked,
+  session,
+}: {
+  task: Task;
+  curriculumId: string;
+  checked: boolean;
+  session: ActiveSession | undefined;
+}) {
   const navigate = useNavigate();
-  const checked = !!completedTaskIds[task.id];
-  const activeSession = activeSessions[task.id];
+  const apiClient = useApiClient();
 
   return (
     <div className="group flex items-center gap-3 py-2 px-3 sm:px-4 rounded-md transition-colors hover:bg-foreground/10">
@@ -56,7 +94,7 @@ export function TaskRow({ task, curriculumId }: { task: Task; curriculumId: stri
           )}
         >
           {task.title}
-          {activeSession && <ActiveSessionLabel session={activeSession} />}
+          {session && <ActiveSessionLabel session={session} />}
         </span>
       </label>
 
@@ -64,10 +102,10 @@ export function TaskRow({ task, curriculumId }: { task: Task; curriculumId: stri
         <div
           className={cn(
             "shrink-0 flex gap-1 transition-opacity",
-            !activeSession && "lg:opacity-0 lg:group-hover:opacity-100",
+            !session && "lg:opacity-0 lg:group-hover:opacity-100",
           )}
         >
-          {activeSession && (
+          {session && (
             <Button
               size="xs"
               variant="secondary"
@@ -81,7 +119,7 @@ export function TaskRow({ task, curriculumId }: { task: Task; curriculumId: stri
             </Button>
           )}
           <Button size="xs" variant="default" onClick={() => navigate(getTopicLinks(curriculumId, task.id).index)}>
-            {activeSession ? <Trans>Continue</Trans> : <Trans>Start</Trans>}
+            {session ? <Trans>Continue</Trans> : <Trans>Start</Trans>}
           </Button>
         </div>
       )}

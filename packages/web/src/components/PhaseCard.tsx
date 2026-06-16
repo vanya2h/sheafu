@@ -11,13 +11,13 @@ export type PhaseCardProps = React.ComponentProps<"div"> & {
   phase: Phase;
   curriculumId: string;
   index: number;
-  completedTaskIds: Record<string, string>;
+  completedTaskIds: ReadonlySet<string>;
 };
 
 export function PhaseCard({ phase, curriculumId, index, completedTaskIds, className, ...restProps }: PhaseCardProps) {
   const [open, setOpen] = useState(false);
 
-  const completedCount = phase.tasks.filter((task) => completedTaskIds[task.id]).length;
+  const completedCount = phase.tasks.filter((task) => completedTaskIds.has(task.id)).length;
   const totalMinutes = phase.tasks.reduce((acc, task) => acc + (task.estMinutes ?? 0), 0);
   const percent = phase.tasks.length === 0 ? 0 : Math.round((completedCount / phase.tasks.length) * 100);
   const panelId = `phase-panel-${curriculumId}-${phase.id}`;

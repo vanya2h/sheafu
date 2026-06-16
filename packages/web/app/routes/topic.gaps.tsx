@@ -13,7 +13,7 @@ import { TopicActionBar } from "~/components/TopicActionBar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { parseJSON } from "~/lib/json";
 import { createLlmStream, type LlmStream } from "~/lib/llmStream";
 import type { GapEntry, GapItem, GapLevel, PhaseByKey } from "~/lib/phase";
@@ -89,6 +89,7 @@ function GapsAssessmentView({ data }: { data: AssessingData }) {
   const navigate = useNavigate();
   const { saveSession } = useTopicSession(taskId!);
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const [stream] = useState<LlmStream>(() => {
     const qa = data.questions.map((q, i) => ({ q, a: data.answers[i] ?? "" }));

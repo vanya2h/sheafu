@@ -1,7 +1,8 @@
 import { createModel } from "rxfy";
-import { z } from "zod";
 
-export const CustomCurriculumModel = createModel(z.object({ id: z.string() }).passthrough(), {
+import { CurriculumDefSchema } from "~/data/types";
+
+export const CustomCurriculumModel = createModel(CurriculumDefSchema, {
   getKey: (e) => e.id,
   name: "CustomCurriculum",
 });

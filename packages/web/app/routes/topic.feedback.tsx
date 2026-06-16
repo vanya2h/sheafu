@@ -15,7 +15,7 @@ import { TopicActionBar } from "~/components/TopicActionBar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { createLlmStream, type LlmStream } from "~/lib/llmStream";
 import type { PhaseByKey } from "~/lib/phase";
 import { isPhaseReadOnly, parseTopicSessionState } from "~/lib/phase";
@@ -96,6 +96,7 @@ function HandsOnFeedbackView({ data }: { data: HandsOnData }) {
   const navigate = useNavigate();
   const { saveSession } = useTopicSession(taskId!);
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const { material, partIdx, answers } = data;
   const part = material.parts[partIdx]!;

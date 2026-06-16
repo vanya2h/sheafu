@@ -1,17 +1,20 @@
 import { Trans } from "@lingui/react/macro";
 import { isRouteErrorResponse, Link, useParams } from "react-router";
+import { Pending, useModelStore } from "rxfy-react";
 import type { Route } from "./+types/curriculum.$curriculumId";
 
 import { CurriculumView } from "~/components/CurriculumView";
 import { BreadcrumbItem, BreadcrumbPage } from "~/components/ui/breadcrumb";
 import { Button } from "~/components/ui/button";
 import { getCurriculum } from "~/data/curriculum";
-import { useAllCurriculums } from "~/hooks/useAllCurriculums";
+import { useCurriculaData } from "~/hooks/useCurriculaData";
 import type { BreadcrumbHandle } from "~/lib/breadcrumbs";
 import { getLocaleFromRequest } from "~/lib/i18n";
+import { CustomCurriculumModel } from "~/lib/models/curriculum";
 import { getHomeRoute } from "~/lib/routes";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
+import { useLocale } from "~app/hooks/useLocale";
 
 export function meta({ data }: Route.MetaArgs): Route.MetaDescriptors {
   const name = data?.curriculumName;
@@ -78,11 +81,31 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 function CurriculumBreadcrumb() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
-  const all = useAllCurriculums();
-  const name = all.find((c) => c.id === curriculumId)?.name ?? "";
+  const locale = useLocale();
+  const { data$: curricula$ } = useCurriculaData();
+  const customStore = useModelStore(CustomCurriculumModel);
+
+  if (!curriculumId) return null;
+
+  const builtIn = getCurriculum(curriculumId, locale);
+  if (builtIn) {
+    return (
+      <BreadcrumbItem>
+        <BreadcrumbPage>{builtIn.name}</BreadcrumbPage>
+      </BreadcrumbItem>
+    );
+  }
+
   return (
-    <BreadcrumbItem>
-      <BreadcrumbPage>{name}</BreadcrumbPage>
-    </BreadcrumbItem>
+    <Pending value$={curricula$}>
+      {() => {
+        const name = customStore.getValue(curriculumId)?.name ?? "";
+        return (
+          <BreadcrumbItem>
+            <BreadcrumbPage>{name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        );
+      }}
+    </Pending>
   );
 }

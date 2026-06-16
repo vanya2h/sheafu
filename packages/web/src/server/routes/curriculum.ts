@@ -4,8 +4,10 @@ import { Hono } from "hono";
 import { extractText, getDocumentProxy } from "unpdf";
 import { z } from "zod";
 import {
+  type Complexity,
   COMPLEXITY_LEVELS,
   OutlinePhaseSchema,
+  parseCurriculumDef,
   parseCurriculumOutline,
   parsePhase,
   PhaseSchema,
@@ -446,11 +448,21 @@ export const curriculumRoute = new Hono<AuthEnv>()
         description: true,
         complexity: true,
         cover: true,
-        outline: true,
-        status: true,
+        phases: true,
+        skills: true,
       },
     });
-    return c.json({ curricula: records });
+    const curricula = records
+      .map((r) =>
+        parseCurriculumDef({
+          ...r,
+          description: r.description ?? undefined,
+          cover: r.cover ?? undefined,
+          complexity: (r.complexity as Complexity) ?? "deep",
+        }),
+      )
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    return c.json({ curricula });
   })
   .post("/curriculums/drafts/:id/extract", async (c) => {
     const userId = c.get("user").id;

@@ -1,6 +1,7 @@
 import { Trans } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { Link, Outlet, redirect, useLoaderData, useNavigate, useParams, useRouteLoaderData } from "react-router";
+import { Pending } from "rxfy-react";
 import type { Route } from "./+types/topic-layout";
 
 import { GridBackground } from "~/components/GridBg";
@@ -12,7 +13,7 @@ import { BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator } from "~/component
 import { listCurriculums } from "~/data/curriculum";
 import type { CurriculumDef } from "~/data/types";
 import { parseCurriculumDef } from "~/data/types";
-import { useProgress } from "~/hooks/useProgress";
+import { useProgressData } from "~/hooks/useProgressData";
 import { useTopicSession } from "~/hooks/useTopicSession";
 import type { BreadcrumbHandle } from "~/lib/breadcrumbs";
 import { getLocaleFromRequest } from "~/lib/i18n";
@@ -137,10 +138,8 @@ export default function TopicLayout() {
   const { taskId } = useParams<{ curriculumId: string; taskId: string }>();
   const navigate = useNavigate();
   const { deleteSession } = useTopicSession(taskId!);
-  const { completedTaskIds } = useProgress();
+  const { data$ } = useProgressData();
   const [actionBarSlot, setActionBarSlot] = useState<HTMLElement | null>(null);
-
-  const taskCompleted = !!completedTaskIds[taskId!];
 
   function startOver() {
     void deleteSession();
@@ -149,7 +148,6 @@ export default function TopicLayout() {
 
   const items = useMemo(() => buildSidebarItems(assessmentSkipped), [assessmentSkipped]);
   const highestIdx = highestPath ? items.findIndex((it) => it.path === highestPath) : -1;
-  const reachedIndex = taskCompleted ? items.length - 1 : highestIdx;
 
   return (
     <TopicActionBarSlotContext value={actionBarSlot}>
@@ -158,7 +156,12 @@ export default function TopicLayout() {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1">
-        <TopicSidebar items={items} reachedIndex={reachedIndex} />
+        <Pending value$={data$}>
+          {({ completions }) => {
+            const reachedIndex = completions.includes(taskId!) ? items.length - 1 : highestIdx;
+            return <TopicSidebar items={items} reachedIndex={reachedIndex} />;
+          }}
+        </Pending>
         <div className="flex-1 min-w-0 lg:border-l border-border flex flex-col relative">
           {cover && (
             <div className="absolute inset-0">
