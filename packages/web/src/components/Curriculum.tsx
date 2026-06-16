@@ -1,11 +1,14 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { parseResponse } from "hono/client";
+import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
-import type { CurriculumDef, Phase, Task } from "../data/types";
-import type { ActiveSession } from "../hooks/useProgress";
-import { useProgress } from "../hooks/useProgress";
-import { apiClient } from "../lib/apiClient";
+import { Pending, useModelStore } from "rxfy-react";
+import type { CurriculumDef } from "../data/types";
+import { useProgressData } from "../hooks/useProgressData";
+import { useApiClient } from "../lib/apiClient";
+import type { ActiveSession } from "../lib/models/progress";
+import { ActiveSessionModel } from "../lib/models/progress";
 import { PHASE_ORDER } from "../lib/phase";
 import { BigColumn } from "./layout/BigColumn";
 import { PageBody } from "./layout/PageBody";
@@ -24,21 +27,7 @@ export type CurriculumProps = React.ComponentProps<"main"> & {
 };
 
 export function Curriculum({ curriculum, className, ...restProps }: CurriculumProps) {
-  const { completedTaskIds, activeSessions } = useProgress();
-
-  const totalTasks = curriculum.phases.reduce((acc, phase) => acc + phase.tasks.length, 0);
-  const completedTasks = curriculum.phases.reduce(
-    (acc, phase) => acc + phase.tasks.filter((task) => completedTaskIds[task.id]).length,
-    0,
-  );
-  const remainingMinutes = curriculum.phases.reduce(
-    (acc, phase) =>
-      acc + phase.tasks.filter((task) => !completedTaskIds[task.id]).reduce((s, task) => s + (task.estMinutes ?? 0), 0),
-    0,
-  );
-  const completionPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-
-  const nextUp = findNextUp(curriculum, completedTaskIds, activeSessions);
+  const { data$ } = useProgressData();
 
   return (
     <PageBody className={cn("relative", className)} {...restProps}>
@@ -49,71 +38,87 @@ export function Curriculum({ curriculum, className, ...restProps }: CurriculumPr
       )}
       <PageContent className="relative">
         <BigColumn>
-          <Card.List className="my-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] border-b border-border">
-              <Card.Raw className="min-w-0 max-lg:border-b lg:border-r border-border">
-                <NextUpPane curriculum={curriculum} nextUp={nextUp} />
-              </Card.Raw>
-              <Card.Raw className="min-w-0">
-                <ProgressRingPane percent={completionPercent} remainingMinutes={remainingMinutes} />
-              </Card.Raw>
-            </div>
+          <Pending value$={data$}>
+            {({ completions, activeSessions }) => {
+              const completedSet = new Set(completions);
+              const activeSet = new Set(activeSessions);
+              let completedTasks = 0;
+              let totalTasks = 0;
+              let remainingMinutes = 0;
+              for (const phase of curriculum.phases) {
+                for (const task of phase.tasks) {
+                  totalTasks += 1;
+                  if (completedSet.has(task.id)) completedTasks += 1;
+                  else remainingMinutes += task.estMinutes ?? 0;
+                }
+              }
+              const completionPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+              const nextUpTaskId = findNextUpTaskId(curriculum, completedSet, activeSet);
+              const nextUpHasSession = nextUpTaskId !== null && activeSet.has(nextUpTaskId);
+              return (
+                <Card.List className="my-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] border-b border-border">
+                    <Card.Raw className="min-w-0 max-lg:border-b lg:border-r border-border">
+                      <NextUpPane curriculum={curriculum} taskId={nextUpTaskId} hasSession={nextUpHasSession} />
+                    </Card.Raw>
+                    <Card.Raw className="min-w-0">
+                      <ProgressRingPane percent={completionPercent} remainingMinutes={remainingMinutes} />
+                    </Card.Raw>
+                  </div>
 
-            <Card.Entry>
-              <Card.Heading>
-                <Trans>All Sections</Trans>
-              </Card.Heading>
-            </Card.Entry>
+                  <Card.Entry>
+                    <Card.Heading>
+                      <Trans>All Sections</Trans>
+                    </Card.Heading>
+                  </Card.Entry>
 
-            {curriculum.phases.map((phase, index) => (
-              <PhaseCard
-                key={phase.id}
-                phase={phase}
-                curriculumId={curriculum.id}
-                index={index}
-                completedTaskIds={completedTaskIds}
-              />
-            ))}
-          </Card.List>
+                  {curriculum.phases.map((phase, index) => (
+                    <PhaseCard
+                      key={phase.id}
+                      phase={phase}
+                      curriculumId={curriculum.id}
+                      index={index}
+                      completedTaskIds={completedSet}
+                    />
+                  ))}
+                </Card.List>
+              );
+            }}
+          </Pending>
         </BigColumn>
       </PageContent>
     </PageBody>
   );
 }
 
-type NextUp = {
-  task: Task;
-  phase: Phase;
-  session: ActiveSession | null;
-};
-
-function findNextUp(
+function findNextUpTaskId(
   curriculum: CurriculumDef,
-  completedTaskIds: Record<string, string>,
-  activeSessions: Record<string, ActiveSession>,
-): NextUp | null {
+  completedSet: ReadonlySet<string>,
+  activeSet: ReadonlySet<string>,
+): string | null {
   for (const phase of curriculum.phases) {
     for (const task of phase.tasks) {
-      const session = activeSessions[task.id];
-      if (session && !completedTaskIds[task.id]) {
-        return { task, phase, session };
-      }
+      if (activeSet.has(task.id) && !completedSet.has(task.id)) return task.id;
     }
   }
   for (const phase of curriculum.phases) {
     for (const task of phase.tasks) {
-      if (!completedTaskIds[task.id]) {
-        return { task, phase, session: null };
-      }
+      if (!completedSet.has(task.id)) return task.id;
     }
   }
   return null;
 }
 
-function NextUpPane({ curriculum, nextUp }: { curriculum: CurriculumDef; nextUp: NextUp | null }) {
-  const navigate = useNavigate();
-
-  if (!nextUp) {
+function NextUpPane({
+  curriculum,
+  taskId,
+  hasSession,
+}: {
+  curriculum: CurriculumDef;
+  taskId: string | null;
+  hasSession: boolean;
+}) {
+  if (!taskId) {
     return (
       <>
         <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground/40">
@@ -129,9 +134,35 @@ function NextUpPane({ curriculum, nextUp }: { curriculum: CurriculumDef; nextUp:
       </>
     );
   }
+  if (hasSession) return <NextUpWithSession curriculum={curriculum} taskId={taskId} />;
+  return <NextUpTaskBody curriculum={curriculum} taskId={taskId} session={undefined} />;
+}
 
-  const { task, phase, session } = nextUp;
-  const taskPercent = session ? phaseProgressPercent(session) : 0;
+function NextUpWithSession({ curriculum, taskId }: { curriculum: CurriculumDef; taskId: string }) {
+  const sessionStore = useModelStore(ActiveSessionModel);
+  const session$ = useMemo(() => sessionStore.get(taskId), [sessionStore, taskId]);
+  return (
+    <Pending value$={session$}>
+      {(session) => <NextUpTaskBody curriculum={curriculum} taskId={taskId} session={session} />}
+    </Pending>
+  );
+}
+
+function NextUpTaskBody({
+  curriculum,
+  taskId,
+  session,
+}: {
+  curriculum: CurriculumDef;
+  taskId: string;
+  session: ActiveSession | undefined;
+}) {
+  const navigate = useNavigate();
+  const apiClient = useApiClient();
+
+  const located = locateTask(curriculum, taskId);
+  if (!located) return null;
+  const { task, phase } = located;
   const taskUrl = `/topic/${curriculum.id}/${task.id}`;
 
   async function startOver() {
@@ -139,6 +170,7 @@ function NextUpPane({ curriculum, nextUp }: { curriculum: CurriculumDef; nextUp:
     navigate(taskUrl);
   }
 
+  const taskPercent = session ? phaseProgressPercent(session) : 0;
   return (
     <>
       <div className="flex items-center gap-3">
@@ -190,6 +222,15 @@ function NextUpPane({ curriculum, nextUp }: { curriculum: CurriculumDef; nextUp:
       </div>
     </>
   );
+}
+
+function locateTask(curriculum: CurriculumDef, taskId: string) {
+  for (const phase of curriculum.phases) {
+    for (const task of phase.tasks) {
+      if (task.id === taskId) return { task, phase };
+    }
+  }
+  return null;
 }
 
 function SessionBadge({ session }: { session: ActiveSession }) {

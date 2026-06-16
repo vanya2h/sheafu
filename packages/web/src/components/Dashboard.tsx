@@ -1,13 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import type { CurriculumDef, Skill } from "../data/types";
-import { useAllCurriculums } from "../hooks/useAllCurriculums";
-import { useProgress } from "../hooks/useProgress";
+import { Pending, useModelStore } from "rxfy-react";
+import { listCurriculums } from "../data/curriculum";
+import type { CurriculumDef } from "../data/types";
+import { useCurriculaData } from "../hooks/useCurriculaData";
+import { useProgressData } from "../hooks/useProgressData";
 import { useTheme } from "../hooks/useTheme";
 import { GRADIENT_PRESETS } from "../lib/gradient";
+import { CustomCurriculumModel } from "../lib/models/curriculum";
 import { getCurriculumLinks } from "../lib/routes";
-import { computeUnlockedSkills } from "../lib/skills";
 import { Inset } from "./layout/Inset";
 import { PageBody } from "./layout/PageBody";
 import { Section } from "./layout/Section";
@@ -16,108 +18,33 @@ import { AnimatedText } from "./AnimatedText";
 import { GradientBackground } from "./GradientBg";
 import { CreatePersonalProgramCard, ProgramCard } from "./ProgramCard";
 
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import { useLocale } from "~app/hooks/useLocale";
 
-function calcCurriculumProgress(curriculum: CurriculumDef, completedTaskIds: Record<string, string>) {
+function calcCurriculumProgress(curriculum: CurriculumDef, completedSet: ReadonlySet<string>) {
   let totalWeight = 0;
   let doneWeight = 0;
   for (const phase of curriculum.phases) {
-    totalWeight += phase.tasks.reduce((s, t) => s + (t.estMinutes ?? 60), 0);
-    doneWeight += phase.tasks.filter((t) => completedTaskIds[t.id]).reduce((s, t) => s + (t.estMinutes ?? 60), 0);
+    for (const task of phase.tasks) {
+      const w = task.estMinutes ?? 60;
+      totalWeight += w;
+      if (completedSet.has(task.id)) doneWeight += w;
+    }
   }
   return totalWeight === 0 ? 0 : Math.round((doneWeight / totalWeight) * 100);
-}
-
-function SkillBadge({ skill, recentlyUnlocked }: { skill: Skill; recentlyUnlocked: boolean }) {
-  return (
-    <div
-      className={cn(
-        "rounded-lg border p-3 flex flex-col gap-1 transition-colors",
-        recentlyUnlocked
-          ? "border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950/60 ring-2 ring-green-400 dark:ring-green-600 ring-offset-1 ring-offset-background"
-          : "border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40",
-      )}
-    >
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs font-bold text-green-600 dark:text-green-400">✓</span>
-        <span className="text-sm font-semibold leading-snug text-foreground">{skill.name}</span>
-        {recentlyUnlocked && (
-          <Badge variant="secondary" className="ml-auto">
-            <Trans>New</Trans>
-          </Badge>
-        )}
-      </div>
-      <p className="text-xs leading-snug text-muted-foreground">{skill.description}</p>
-    </div>
-  );
-}
-
-function SkillsSection({ completedTaskIds }: { completedTaskIds: Record<string, string> }) {
-  const allCurriculums = useAllCurriculums();
-  const unlockedSkills = useMemo(
-    () => computeUnlockedSkills(completedTaskIds, allCurriculums),
-    [completedTaskIds, allCurriculums],
-  );
-  const { unlockedIds, recentIds } = useMemo(() => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return {
-      unlockedIds: new Set(unlockedSkills.map((u) => u.skill.id)),
-      recentIds: new Set(unlockedSkills.filter((u) => u.unlockedAt >= sevenDaysAgo).map((u) => u.skill.id)),
-    };
-  }, [unlockedSkills]);
-
-  const curriculumsWithUnlockedSkills = allCurriculums
-    .map((c) => ({ ...c, unlockedSkills: (c.skills ?? []).filter((s) => unlockedIds.has(s.id)) }))
-    .filter((c) => c.unlockedSkills.length > 0);
-
-  if (curriculumsWithUnlockedSkills.length === 0) return null;
-
-  return (
-    <Section>
-      <SectionHeader>
-        <h2 className="text-base font-semibold text-foreground">
-          <Trans>Skills</Trans>
-        </h2>
-      </SectionHeader>
-      <div className="flex flex-col">
-        {curriculumsWithUnlockedSkills.map((curriculum, idx) => (
-          <div key={curriculum.id} className={cn(idx > 0 && "border-t border-border")}>
-            <Inset className="py-3 border-b border-border">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{curriculum.name}</h3>
-            </Inset>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {curriculum.unlockedSkills.map((skill, i) => (
-                <div
-                  key={skill.id}
-                  className={cn(
-                    "border-b border-border last:border-b-0 p-4",
-                    "sm:max-lg:odd:border-r",
-                    "lg:not-nth-[3n]:border-r",
-                    i >= curriculum.unlockedSkills.length - (curriculum.unlockedSkills.length % 3 || 3) &&
-                      "lg:border-b-0",
-                  )}
-                >
-                  <SkillBadge skill={skill} recentlyUnlocked={recentIds.has(skill.id)} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
 }
 
 const CELL_BORDERS = cn("border-b border-border", "sm:max-lg:odd:border-r", "lg:not-nth-[3n]:border-r");
 
 export function Dashboard() {
   const { t } = useLingui();
-  const { completedTaskIds } = useProgress();
-  const allCurriculums = useAllCurriculums();
+  const locale = useLocale();
+  const { data$: progress$ } = useProgressData();
+  const { data$: curricula$ } = useCurriculaData();
+  const customStore = useModelStore(CustomCurriculumModel);
   const { theme } = useTheme();
+  const builtIn = useMemo(() => listCurriculums(locale), [locale]);
 
   return (
     <PageBody>
@@ -151,25 +78,52 @@ export function Dashboard() {
           </Button>
         </Inset>
       </Section>
-      <Section>
-        <SectionHeader>
-          <h2 className="text-2xl font-semibold text-foreground">
-            <Trans>Programs</Trans>
-          </h2>
-        </SectionHeader>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {allCurriculums.map((curriculum) => (
-            <ProgramCard
-              key={curriculum.id}
-              curriculum={curriculum}
-              progress={calcCurriculumProgress(curriculum, completedTaskIds)}
-              className={CELL_BORDERS}
-            />
-          ))}
-          <CreatePersonalProgramCard className={CELL_BORDERS} />
-        </div>
-      </Section>
-      <SkillsSection completedTaskIds={completedTaskIds} />
+      <Pending value$={curricula$}>
+        {({ curricula: customIds }) => {
+          const custom: CurriculumDef[] = [];
+          for (const id of customIds) {
+            const entity = customStore.getValue(id);
+            if (entity) custom.push(entity);
+          }
+          const allCurriculums = [...builtIn, ...custom];
+          return (
+            <Pending value$={progress$}>
+              {(progress) => (
+                <ProgramsSection allCurriculums={allCurriculums} completedSet={new Set(progress.completions)} />
+              )}
+            </Pending>
+          );
+        }}
+      </Pending>
     </PageBody>
+  );
+}
+
+function ProgramsSection({
+  allCurriculums,
+  completedSet,
+}: {
+  allCurriculums: CurriculumDef[];
+  completedSet: ReadonlySet<string>;
+}) {
+  return (
+    <Section>
+      <SectionHeader>
+        <h2 className="text-2xl font-semibold text-foreground">
+          <Trans>Programs</Trans>
+        </h2>
+      </SectionHeader>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {allCurriculums.map((curriculum) => (
+          <ProgramCard
+            key={curriculum.id}
+            curriculum={curriculum}
+            progress={calcCurriculumProgress(curriculum, completedSet)}
+            className={CELL_BORDERS}
+          />
+        ))}
+        <CreatePersonalProgramCard className={CELL_BORDERS} />
+      </div>
+    </Section>
   );
 }

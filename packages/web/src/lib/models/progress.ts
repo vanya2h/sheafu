@@ -1,5 +1,6 @@
 import { createModel } from "rxfy";
 import { z } from "zod";
+import { PHASE_ORDER } from "../phase";
 
 export const TaskCompletionModel = createModel(z.object({ taskId: z.string(), completedAt: z.string() }), {
   getKey: (e) => e.taskId,
@@ -12,7 +13,7 @@ export const DailyActivityModel = createModel(
 );
 
 export const ActiveSessionModel = createModel(
-  z.object({ taskId: z.string(), name: z.string(), partIdx: z.number().optional() }),
+  z.object({ taskId: z.string(), name: z.enum(PHASE_ORDER), partIdx: z.number().optional() }),
   { getKey: (e) => e.taskId, name: "ActiveSession" },
 );
 

@@ -14,7 +14,7 @@ import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { createLlmStream, type LlmStream } from "~/lib/llmStream";
 import { isPhaseReadOnly, parseTopicSessionState } from "~/lib/phase";
 import { getTopicLinks } from "~/lib/routes";
@@ -53,6 +53,7 @@ export default function HandsOnPage() {
   const { saveSession } = useTopicSession(taskId!);
   const { t } = useLingui();
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const [answers, setAnswers] = useState<Record<string, string>>(savedAnswers);
   const [streams, setStreams] = useState<Record<number, LlmStream>>({});

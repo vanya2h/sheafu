@@ -17,7 +17,7 @@ import { ReadingColumn } from "~/components/layout/ReadingColumn";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { type OutlinePhase, parsePhase, type Phase, type Task } from "~/data/types";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { getApiErrorMessage } from "~/lib/errors";
 import { parseJSON } from "~/lib/json";
 import { createLlmStream } from "~/lib/llmStream";
@@ -122,6 +122,7 @@ function PhaseIdleView({
   allSelectedDone: boolean;
 }) {
   const { revalidate } = useRevalidator();
+  const apiClient = useApiClient();
   const [optimisticDeselected, setOptimisticDeselected] = useState<string[] | null>(null);
   const toggleFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deselectedTaskIds = new Set(optimisticDeselected ?? selections?.deselectedTaskIds ?? []);
@@ -215,6 +216,7 @@ function PhaseStreamView({
 }) {
   const { revalidate } = useRevalidator();
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const stream = useMemo(
     () =>
@@ -224,7 +226,7 @@ function PhaseStreamView({
           { init: { signal } },
         ),
       ),
-    [id, phaseId, locale],
+    [apiClient, id, phaseId, locale],
   );
 
   const viewState$ = useMemo(
@@ -344,6 +346,7 @@ function PhaseNav({
   disabled: boolean;
 }) {
   const navigate = useNavigate();
+  const apiClient = useApiClient();
   const total = orderedSelected.length;
   const isFirst = currentIdx === 0;
   const isLast = currentIdx === total - 1;

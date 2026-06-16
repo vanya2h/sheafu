@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { type CurriculumOutline, parseCurriculumOutline } from "~/data/types";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import type { BreadcrumbHandle } from "~/lib/breadcrumbs";
 import { type GradientCover, GradientCoverSchema } from "~/lib/gradient";
 import { getCurriculumLinks } from "~/lib/routes";
@@ -134,6 +134,7 @@ export default function DraftLayout() {
   const data = useLoaderData<typeof loader>();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const apiClient = useApiClient();
   const [actionBarSlot, setActionBarSlot] = useState<HTMLElement | null>(null);
 
   async function discardDraft() {

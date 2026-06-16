@@ -18,7 +18,7 @@ import { TopicActionBar } from "~/components/TopicActionBar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { getApiErrorMessage } from "~/lib/errors";
 import type { Locale } from "~/lib/i18n";
 import { getLlmStream } from "~/lib/llmStream";
@@ -142,6 +142,7 @@ function StudyView({
   handsOnRoute,
 }: StudyViewProps) {
   const navigate = useNavigate();
+  const apiClient = useApiClient();
   const { saveSession: rawSaveSession } = useTopicSession(taskId);
 
   const [material$] = useState(() => createAtom<Material | null>(initialMaterial));
@@ -186,7 +187,18 @@ function StudyView({
         }),
       ),
     };
-  }, [task, taskId, curriculumName, complexity, assessmentContext, locale, initialMaterial, material$, partIdx$]);
+  }, [
+    apiClient,
+    task,
+    taskId,
+    curriculumName,
+    complexity,
+    assessmentContext,
+    locale,
+    initialMaterial,
+    material$,
+    partIdx$,
+  ]);
 
   const partStream$ = useMemo(
     () =>
@@ -221,7 +233,7 @@ function StudyView({
           };
         }),
       ),
-    [material$, partIdx$, task, taskId, locale, curriculumName, complexity],
+    [apiClient, material$, partIdx$, task, taskId, locale, curriculumName, complexity],
   );
 
   useEffect(() => {

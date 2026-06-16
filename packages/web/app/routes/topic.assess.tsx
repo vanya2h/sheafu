@@ -15,7 +15,7 @@ import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { useTopicSession } from "~/hooks/useTopicSession";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { parseJSON } from "~/lib/json";
 import { createLlmStream, type LlmStream } from "~/lib/llmStream";
 import { isPhaseReadOnly, parseTopicSessionState } from "~/lib/phase";
@@ -58,6 +58,7 @@ function AssessContent({
   const navigate = useNavigate();
   const { saveSession } = useTopicSession(taskId!);
   const locale = useLocale();
+  const apiClient = useApiClient();
 
   const { task, curriculumName, complexity } = layoutData;
 

@@ -43,7 +43,7 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { useTheme } from "~/hooks/useTheme";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { GRADIENT_PRESETS } from "~/lib/gradient";
 import { getHomeRoute } from "~/lib/routes";
 import { cn } from "~/lib/utils";
@@ -102,6 +102,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
 function EmptyState({ user }: { user: { name: string } }) {
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const apiClient = useApiClient();
   const { t } = useLingui();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -236,6 +237,7 @@ type Profile = Pick<UserProfile, "markdown"> & { updatedAt: string };
 function FilledState({ profile }: { profile: Profile }) {
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const apiClient = useApiClient();
   const { t } = useLingui();
   const [markdown, setMarkdown] = useState(profile.markdown);
   const [savingMarkdown, setSavingMarkdown] = useState(false);

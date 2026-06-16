@@ -17,7 +17,7 @@ import { ReadingColumn } from "~/components/layout/ReadingColumn";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { type CurriculumOutline, parseCurriculumOutline } from "~/data/types";
-import { apiClient } from "~/lib/apiClient";
+import { useApiClient } from "~/lib/apiClient";
 import { getApiErrorMessage } from "~/lib/errors";
 import { parseJSON } from "~/lib/json";
 import { createLlmStream } from "~/lib/llmStream";
@@ -69,6 +69,7 @@ function OutlineIdleView({
   initialSelectedIds: string[];
 }) {
   const navigate = useNavigate();
+  const apiClient = useApiClient();
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
 
   function toggle(phaseId: string) {
@@ -134,6 +135,7 @@ function OutlineStreamView({
   const navigate = useNavigate();
   const { revalidate } = useRevalidator();
   const locale = useLocale();
+  const apiClient = useApiClient();
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
 
   const stream = useMemo(() => {
@@ -146,7 +148,7 @@ function OutlineStreamView({
         { init: { signal } },
       );
     });
-  }, [hasText, id, locale]);
+  }, [apiClient, hasText, id, locale]);
 
   const viewState$ = useMemo(
     () =>
