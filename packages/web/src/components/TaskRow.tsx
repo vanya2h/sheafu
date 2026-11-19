@@ -5,6 +5,7 @@ import type { Task } from "../data/types";
 import type { ActiveSession } from "../hooks/useProgress";
 import { useProgress } from "../hooks/useProgress";
 import { apiClient } from "../lib/apiClient";
+import { PHASE_ROUTES } from "../lib/phase";
 import { getTopicLinks } from "../lib/routes";
 
 import { Button } from "~/components/ui/button";
@@ -74,13 +75,20 @@ export function TaskRow({ task, curriculumId }: { task: Task; curriculumId: stri
               className="hidden sm:inline-flex"
               onClick={() => {
                 void parseResponse(apiClient.api["topic-sessions"][":taskId"].$delete({ param: { taskId: task.id } }));
-                navigate(getTopicLinks(curriculumId, task.id).index);
+                navigate(getTopicLinks(curriculumId, task.id).choice);
               }}
             >
               <Trans>Start over</Trans>
             </Button>
           )}
-          <Button size="xs" variant="default" onClick={() => navigate(getTopicLinks(curriculumId, task.id).index)}>
+          <Button
+            size="xs"
+            variant="default"
+            onClick={() => {
+              const links = getTopicLinks(curriculumId, task.id);
+              navigate(activeSession ? `${links.index}/${PHASE_ROUTES[activeSession.name]}` : links.choice);
+            }}
+          >
             {activeSession ? <Trans>Continue</Trans> : <Trans>Start</Trans>}
           </Button>
         </div>
